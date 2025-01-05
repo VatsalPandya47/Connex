@@ -1,71 +1,79 @@
 import SwiftUI
 
 struct RangeSlider: View {
-    @Binding var range: ClosedRange<Double>
-    let bounds: ClosedRange<Double>
+    @Binding var range: ClosedRange<Int>
+    let bounds: ClosedRange<Int>
     
-    init(range: Binding<ClosedRange<Double>>, in bounds: ClosedRange<Double>) {
-        self._range = range
-        self.bounds = bounds
-    }
+    @State private var leftThumbLocation: CGFloat = 0
+    @State private var rightThumbLocation: CGFloat = 0
     
     var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .leading) {
                 // Track
                 Rectangle()
-                    .fill(Color.gray.opacity(0.2))
+                    .fill(Color(.systemGray5))
                     .frame(height: 4)
                 
                 // Selected Range
                 Rectangle()
-                    .fill(Color.blue)
-                    .frame(width: width(for: range, in: geometry), height: 4)
-                    .offset(x: position(for: range.lowerBound, in: geometry))
+                    .fill(Color.accentColor)
+                    .frame(width: rightThumbLocation - leftThumbLocation, height: 4)
+                    .offset(x: leftThumbLocation)
                 
-                // Lower Handle
-                handle(for: range.lowerBound, in: geometry)
-                    .gesture(dragGesture(for: \.lowerBound, in: geometry))
+                // Left Thumb
+                Circle()
+                    .fill(Color.white)
+                    .frame(width: 24, height: 24)
+                    .shadow(radius: 2)
+                    .offset(x: leftThumbLocation - 12)
+                    .gesture(
+                        DragGesture()
+                            .onChanged { value in
+                                updateLeftThumb(value: value, width: geometry.size.width)
+                            }
+                    )
                 
-                // Upper Handle
-                handle(for: range.upperBound, in: geometry)
-                    .gesture(dragGesture(for: \.upperBound, in: geometry))
+                // Right Thumb
+                Circle()
+                    .fill(Color.white)
+                    .frame(width: 24, height: 24)
+                    .shadow(radius: 2)
+                    .offset(x: rightThumbLocation - 12)
+                    .gesture(
+                        DragGesture()
+                            .onChanged { value in
+                                updateRightThumb(value: value, width: geometry.size.width)
+                            }
+                    )
+            }
+            .onAppear {
+                // Initialize thumb locations
+                let width = geometry.size.width
+                let rangeLength = CGFloat(bounds.upperBound - bounds.lowerBound)
+                
+                leftThumbLocation = width * CGFloat(range.lowerBound - bounds.lowerBound) / rangeLength
+                rightThumbLocation = width * CGFloat(range.upperBound - bounds.lowerBound) / rangeLength
             }
         }
-        .frame(height: 30)
+        .frame(height: 24)
     }
     
-    private func handle(for value: Double, in geometry: GeometryProxy) -> some View {
-        Circle()
-            .fill(Color.white)
-            .frame(width: 24, height: 24)
-            .shadow(radius: 4)
-            .offset(x: position(for: value, in: geometry))
+    private func updateLeftThumb(value: DragGesture.Value, width: CGFloat) {
+        let newLocation = max(0, min(rightThumbLocation - 24, value.location.x))
+        leftThumbLocation = newLocation
+        
+        let rangeLength = CGFloat(bounds.upperBound - bounds.lowerBound)
+        let newValue = Int(round(Double(bounds.lowerBound) + Double(newLocation) * Double(rangeLength) / Double(width)))
+        range = newValue...range.upperBound
     }
     
-    private func position(for value: Double, in geometry: GeometryProxy) -> CGFloat {
-        let percentage = (value - bounds.lowerBound) / (bounds.upperBound - bounds.lowerBound)
-        return (geometry.size.width - 24) * CGFloat(percentage)
-    }
-    
-    private func width(for range: ClosedRange<Double>, in geometry: GeometryProxy) -> CGFloat {
-        let lowerPercentage = (range.lowerBound - bounds.lowerBound) / (bounds.upperBound - bounds.lowerBound)
-        let upperPercentage = (range.upperBound - bounds.lowerBound) / (bounds.upperBound - bounds.lowerBound)
-        return (geometry.size.width - 24) * CGFloat(upperPercentage - lowerPercentage)
-    }
-    
-    private func dragGesture(for bound: WritableKeyPath<ClosedRange<Double>, Double>, in geometry: GeometryProxy) -> some Gesture {
-        DragGesture()
-            .onChanged { value in
-                let percentage = value.location.x / (geometry.size.width - 24)
-                let newValue = bounds.lowerBound + (bounds.upperBound - bounds.lowerBound) * Double(percentage)
-                let clampedValue = max(bounds.lowerBound, min(bounds.upperBound, newValue))
-                
-                if bound == \.lowerBound {
-                    range = min(clampedValue, range.upperBound - 1)...range.upperBound
-                } else {
-                    range = range.lowerBound...max(clampedValue, range.lowerBound + 1)
-                }
-            }
+    private func updateRightThumb(value: DragGesture.Value, width: CGFloat) {
+        let newLocation = min(width, max(leftThumbLocation + 24, value.location.x))
+        rightThumbLocation = newLocation
+        
+        let rangeLength = CGFloat(bounds.upperBound - bounds.lowerBound)
+        let newValue = Int(round(Double(bounds.lowerBound) + Double(newLocation) * Double(rangeLength) / Double(width)))
+        range = range.lowerBound...newValue
     }
 } 

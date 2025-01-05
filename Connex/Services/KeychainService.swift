@@ -3,23 +3,24 @@ import Security
 
 class KeychainService {
     static let shared = KeychainService()
-    private init() {}
-    
-    private let service = "com.VatsalPandya.Connex"
+    private let service = "com.yourcompany.connex"
     private let account = "authToken"
     
     func saveAuthToken(_ token: String) {
+        let data = token.data(using: .utf8)!
+        
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
-            kSecValueData as String: token.data(using: .utf8)!
+            kSecValueData as String: data
         ]
         
         SecItemDelete(query as CFDictionary)
         let status = SecItemAdd(query as CFDictionary, nil)
+        
         guard status == errSecSuccess else {
-            print("Error saving token to Keychain")
+            print("Error saving token to Keychain: \(status)")
             return
         }
     }

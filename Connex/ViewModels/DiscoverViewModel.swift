@@ -2,51 +2,54 @@ import Foundation
 import Combine
 
 class DiscoverViewModel: ObservableObject {
-    @Published var potentialConnections: [User] = []
+    @Published private(set) var users: [User] = []
+    @Published private(set) var currentUser: User?
     @Published var isLoading = false
-    private var currentPage = 1
+    @Published var showError = false
+    @Published var errorMessage = ""
+    
+    private let userManager = UserManager.shared
+    private let connectionManager = ConnectionManager.shared
     private var cancellables = Set<AnyCancellable>()
     
-    private let networkService = NetworkService.shared
-    
     init() {
-        loadPotentialConnections()
+        setupBindings()
+        loadUsers()
     }
     
-    func loadPotentialConnections() {
-        isLoading = true
+    private func setupBindings() {
+        userManager.$discoveredUsers
+            .assign(to: &$users)
         
-        networkService.fetchPotentialConnections(page: currentPage)
+        userManager.$isLoading
+            .assign(to: &$isLoading)
+        
+        AuthenticationService.shared.$currentUser
+            .assign(to: &$currentUser)
+    }
+    
+    func loadUsers(refresh: Bool = false) {
+        userManager.loadDiscoveredUsers(refresh: refresh)
+    }
+    
+    func sendConnectionRequest(to user: User) {
+        userManager.sendConnectionRequest(to: user.id)
             .sink(receiveCompletion: { [weak self] completion in
-                self?.isLoading = false
                 if case .failure(let error) = completion {
-                    print("Failed to load connections: \(error)")
+                    self?.errorMessage = error.localizedDescription
+                    self?.showError = true
                 }
-            }, receiveValue: { [weak self] users in
-                self?.potentialConnections.append(contentsOf: users)
-                self?.currentPage += 1
+            }, receiveValue: { _ in
+                // Handle successful connection request
             })
             .store(in: &cancellables)
     }
     
-    func handleLike(_ user: User) {
-        // Implement like logic
-        removeUser(user)
+    func getCompatibilityScore(for user: User) -> Double {
+        connectionManager.calculateCompatibilityScore(with: user)
     }
     
-    func handlePass(_ user: User) {
-        // Implement pass logic
-        removeUser(user)
-    }
-    
-    private func removeUser(_ user: User) {
-        potentialConnections.removeAll { $0.id == user.id }
-        if potentialConnections.count < 5 {
-            loadPotentialConnections()
-        }
-    }
-    
-    func showFilters() {
-        // Implement filter sheet presentation
+    func filterUsers(by interests: Set<String>? = nil, distance: Double? = nil) {
+        // Implement filtering logic
     }
 } 

@@ -1,21 +1,102 @@
 import Foundation
 import Combine
-import AuthenticationServices
 
-class AuthenticationService {
+class AuthenticationService: ObservableObject {
     static let shared = AuthenticationService()
     
-    enum AuthenticationState {
-        case unauthenticated
-        case authenticating
-        case authenticated(User)
+    @Published private(set) var currentUser: User?
+    @Published private(set) var isAuthenticated = false
+    
+    private let networkService = NetworkService.shared
+    private let tokenManager = TokenManager.shared
+    private var cancellables = Set<AnyCancellable>()
+    
+    var token: String? {
+        tokenManager.accessToken
     }
     
-    func signInWithApple() -> AnyPublisher<User, Error> {
-        // Implement Apple Sign In logic
+    private init() {
+        // Try to restore session from saved tokens
+        if let token = tokenManager.accessToken {
+            validateToken(token)
+        }
     }
     
-    func verifyUserProfile(_ user: User) -> AnyPublisher<Bool, Error> {
-        // Implement profile verification
+    func signIn(email: String, password: String) -> AnyPublisher<User, Error> {
+        let credentials = SignInCredentials(email: email, password: password)
+        
+        return networkService.makeRequest(endpoint: .signIn, body: credentials)
+            .tryMap { (response: AuthResponse) -> User in
+                self.tokenManager.saveTokens(
+                    accessToken: response.accessToken,
+                    refreshToken: response.refreshToken
+                )
+                return response.user
+            }
+            .handleEvents(receiveOutput: { [weak self] user in
+                self?.currentUser = user
+                self?.isAuthenticated = true
+            })
+            .eraseToAnyPublisher()
     }
+    
+    func signUp(with details: SignUpDetails) -> AnyPublisher<User, Error> {
+        networkService.makeRequest(endpoint: .signUp, body: details)
+            .tryMap { (response: AuthResponse) -> User in
+                self.tokenManager.saveTokens(
+                    accessToken: response.accessToken,
+                    refreshToken: response.refreshToken
+                )
+                return response.user
+            }
+            .handleEvents(receiveOutput: { [weak self] user in
+                self?.currentUser = user
+                self?.isAuthenticated = true
+            })
+            .eraseToAnyPublisher()
+    }
+    
+    func signOut() {
+        tokenManager.clearTokens()
+        currentUser = nil
+        isAuthenticated = false
+    }
+    
+    private func validateToken(_ token: String) {
+        // Fetch current user profile to validate token
+        networkService.makeRequest(endpoint: .updateProfile("me"))
+            .sink(
+                receiveCompletion: { [weak self] completion in
+                    if case .failure = completion {
+                        self?.signOut()
+                    }
+                },
+                receiveValue: { [weak self] (user: User) in
+                    self?.currentUser = user
+                    self?.isAuthenticated = true
+                }
+            )
+            .store(in: &cancellables)
+    }
+}
+
+// MARK: - Supporting Types
+
+struct SignInCredentials: Codable {
+    let email: String
+    let password: String
+}
+
+struct SignUpDetails: Codable {
+    let email: String
+    let password: String
+    let firstName: String
+    let lastName: String
+    let dateOfBirth: Date
+}
+
+struct AuthResponse: Codable {
+    let user: User
+    let accessToken: String
+    let refreshToken: String
 } 

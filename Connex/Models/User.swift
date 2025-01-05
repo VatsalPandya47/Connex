@@ -1,72 +1,66 @@
 import Foundation
 
-struct User: Identifiable, Codable {
-    let id: UUID
-    var username: String
-    var email: String
-    var profilePrompts: [ProfilePrompt]
-    var interests: [String]
-    var moments: [Moment]
-    var connectionPreferences: ConnectionPreferences
+struct User: Identifiable, Codable, Equatable {
+    let id: String
+    let firstName: String
+    let lastName: String
+    let email: String
+    let dateOfBirth: Date
+    let location: Location
+    let profileImageURLs: [URL]
+    let bio: String?
+    let headline: String?
+    let interests: [String]
+    let profilePrompts: [ProfilePrompt]
+    let lastActive: Date
+    let createdAt: Date
+    var connection: Connection?
     
-    var firstName: String
-    var lastName: String
-    var profileImageURLs: [URL]
-    var bio: String?
-    var dateOfBirth: Date
-    var location: Location
-    var lastActive: Date
-    var isVerified: Bool
-    
-    struct ProfilePrompt: Codable {
-        let prompt: String
-        let response: String
+    var age: Int {
+        Calendar.current.dateComponents([.year], from: dateOfBirth, to: Date()).year ?? 0
     }
     
-    struct ConnectionPreferences: Codable {
-        var lookingFor: [ConnectionType]
-        var maxDistance: Double
-        var ageRange: ClosedRange<Int>
+    struct Location: Codable, Equatable {
+        let latitude: Double
+        let longitude: Double
+        let city: String
+        let country: String
     }
     
-    enum ConnectionType: String, Codable, CaseIterable {
-        case friendship
-        case mentorship
-        case professionalNetworking
-        case romanticPartnership
+    struct ProfilePrompt: Codable, Equatable {
+        let question: String
+        var answer: String
     }
-    
-    struct Location: Codable {
-        var latitude: Double
-        var longitude: Double
-        var city: String?
-        var country: String?
-    }
-    
-    init(id: UUID = UUID(),
-         username: String,
-         email: String,
-         firstName: String,
-         lastName: String,
-         dateOfBirth: Date,
-         location: Location) {
-        self.id = id
-        self.username = username
-        self.email = email
-        self.firstName = firstName
-        self.lastName = lastName
-        self.dateOfBirth = dateOfBirth
-        self.location = location
-        self.profilePrompts = []
-        self.interests = []
-        self.moments = []
-        self.profileImageURLs = []
-        self.lastActive = Date()
-        self.isVerified = false
-        self.connectionPreferences = ConnectionPreferences(
-            lookingFor: [],
-            maxDistance: 50.0,
-            ageRange: 18...100
+}
+
+extension User {
+    static var mock: User {
+        User(
+            id: UUID().uuidString,
+            firstName: "John",
+            lastName: "Doe",
+            email: "john@example.com",
+            dateOfBirth: Calendar.current.date(byAdding: .year, value: -25, to: Date())!,
+            location: Location(
+                latitude: 37.7749,
+                longitude: -122.4194,
+                city: "San Francisco",
+                country: "United States"
+            ),
+            profileImageURLs: [
+                URL(string: "https://example.com/profile1.jpg")!
+            ],
+            bio: "Software developer passionate about creating great user experiences",
+            headline: "iOS Developer @ Tech Co",
+            interests: ["Swift", "SwiftUI", "iOS Development", "Hiking", "Photography"],
+            profilePrompts: [
+                ProfilePrompt(
+                    question: "What's your favorite way to spend a weekend?",
+                    answer: "Exploring new hiking trails and taking photos"
+                )
+            ],
+            lastActive: Date(),
+            createdAt: Date()
         )
     }
 } 

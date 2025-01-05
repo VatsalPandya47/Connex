@@ -3,68 +3,98 @@ import Combine
 
 class NetworkService {
     static let shared = NetworkService()
-    private let baseURL = URL(string: "https://api.connex.app")!
+    private let baseURL = URL(string: AppConfig.API.baseURL)!
     
-    // Authentication headers
     private var headers: [String: String] {
         if let token = KeychainService.shared.getAuthToken() {
-            return ["Authorization": "Bearer \(token)"]
+            return [
+                "Authorization": "Bearer \(token)",
+                "Content-Type": "application/json"
+            ]
         }
-        return [:]
+        return ["Content-Type": "application/json"]
     }
     
-    // MARK: - User Endpoints
-    
-    func fetchPotentialConnections(
-        page: Int = 1,
-        limit: Int = 20
-    ) -> AnyPublisher<[User], Error> {
-        var components = URLComponents(url: baseURL.appendingPathComponent("discover"), resolvingAgainstBaseURL: true)!
-        components.queryItems = [
-            URLQueryItem(name: "page", value: "\(page)"),
-            URLQueryItem(name: "limit", value: "\(limit)")
-        ]
-        
-        return makeRequest(url: components.url!, method: "GET")
-    }
-    
-    func updateUserProfile(_ user: User) -> AnyPublisher<User, Error> {
-        let url = baseURL.appendingPathComponent("users/\(user.id)")
-        return makeRequest(url: url, method: "PUT", body: user)
-    }
-    
-    // MARK: - Moments Endpoints
-    
-    func createMoment(_ moment: Moment) -> AnyPublisher<Moment, Error> {
-        let url = baseURL.appendingPathComponent("moments")
-        return makeRequest(url: url, method: "POST", body: moment)
-    }
-    
-    func fetchUserMoments(userId: UUID) -> AnyPublisher<[Moment], Error> {
-        let url = baseURL.appendingPathComponent("users/\(userId)/moments")
-        return makeRequest(url: url, method: "GET")
-    }
-    
-    // MARK: - Helper Methods
-    
-    private func makeRequest<T: Codable>(
-        url: URL,
-        method: String,
-        body: Codable? = nil
+    func makeRequest<T: Codable>(
+        endpoint: APIEndpoint,
+        queryItems: [URLQueryItem]? = nil,
+        body: Encodable? = nil
     ) -> AnyPublisher<T, Error> {
-        var request = URLRequest(url: url)
-        request.httpMethod = method
+        var components = URLComponents(url: baseURL.appendingPathComponent(endpoint.path), resolvingAgainstBaseURL: true)!
+        components.queryItems = queryItems
+        
+        var request = URLRequest(url: components.url!)
+        request.httpMethod = endpoint.method
         request.allHTTPHeaderFields = headers
         
         if let body = body {
             request.httpBody = try? JSONEncoder().encode(body)
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         }
         
         return URLSession.shared.dataTaskPublisher(for: request)
-            .map(\.data)
+            .tryMap { data, response in
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    throw NetworkError.invalidResponse
+                }
+                
+                switch httpResponse.statusCode {
+                case 200...299:
+                    return data
+                case 401:
+                    throw NetworkError.unauthorized
+                case 429:
+                    throw NetworkError.rateLimited
+                default:
+                    throw NetworkError.serverError("Status code: \(httpResponse.statusCode)")
+                }
+            }
             .decode(type: T.self, decoder: JSONDecoder())
             .receive(on: DispatchQueue.main)
             .eraseToAnyPublisher()
+    }
+}
+
+extension NetworkService {
+    enum Endpoint {
+        case connections
+        case createConnection
+        case acceptConnection(String)
+        case declineConnection(String)
+        case blockUser
+        case getUsers
+        
+        var path: String {
+            switch self {
+            case .connections:
+                return "/connections"
+            case .createConnection:
+                return "/connections"
+            case .acceptConnection(let id):
+                return "/connections/\(id)/accept"
+            case .declineConnection(let id):
+                return "/connections/\(id)/decline"
+            case .blockUser:
+                return "/users/block"
+            case .getUsers:
+                return "/users/get"
+            }
+        }
+        
+        var method: HTTPMethod {
+            switch self {
+            case .connections:
+                return .get
+            case .createConnection:
+                return .post
+            case .acceptConnection:
+                return .post
+            case .declineConnection:
+                return .post
+            case .blockUser:
+                return .post
+            case .getUsers:
+                return .post
+            }
+        }
     }
 } 
