@@ -38,6 +38,12 @@ class SettingsViewModel: ObservableObject {
         saveSettings(updatedSettings)
     }
     
+    func updateInterests(_ interests: [String]) {
+        var updatedSettings = settings
+        updatedSettings.discoverySettings.interests = interests
+        saveSettings(updatedSettings)
+    }
+    
     private func saveSettings(_ settings: UserSettings) {
         isLoading = true
         

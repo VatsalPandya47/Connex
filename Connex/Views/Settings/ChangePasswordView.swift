@@ -6,6 +6,7 @@ struct ChangePasswordView: View {
     @State private var confirmPassword = ""
     @State private var showAlert = false
     @State private var alertMessage = ""
+    @State private var isLoading = false // Loading state
     
     var body: some View {
         Form {
@@ -16,9 +17,16 @@ struct ChangePasswordView: View {
             }
             
             Section {
-                Button("Change Password") {
+                Button(action: {
                     changePassword()
+                }) {
+                    if isLoading {
+                        ProgressView() // Show loading indicator
+                    } else {
+                        Text("Change Password")
+                    }
                 }
+                .disabled(isLoading) // Disable button while loading
             }
         }
         .navigationTitle("Change Password")
@@ -31,8 +39,27 @@ struct ChangePasswordView: View {
     }
     
     private func changePassword() {
-        // Implement the logic to change the password
-        // Validate the input and call the appropriate service
-        // If there's an error, set the alertMessage and showAlert to true
+        // Validate the input
+        guard !currentPassword.isEmpty, !newPassword.isEmpty, newPassword == confirmPassword else {
+            alertMessage = "Please ensure all fields are filled out correctly."
+            showAlert = true
+            return
+        }
+        
+        isLoading = true // Start loading
+        
+        // Call the service to change the password
+        AuthenticationService.shared.changePassword(currentPassword: currentPassword, newPassword: newPassword) { result in
+            isLoading = false // Stop loading
+            switch result {
+            case .success:
+                alertMessage = "Password changed successfully."
+                showAlert = true
+                // Optionally, dismiss the view or navigate back
+            case .failure(let error):
+                alertMessage = error.localizedDescription
+                showAlert = true
+            }
+        }
     }
 } 

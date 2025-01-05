@@ -55,6 +55,12 @@ struct SettingsView: View {
                     } label: {
                         Text("Discovery Settings")
                     }
+                    
+                    NavigationLink {
+                        InterestsSelectionView(selectedInterests: $viewModel.settings.discoverySettings.interests)
+                    } label: {
+                        Text("Select Interests")
+                    }
                 }
                 
                 // Support Section

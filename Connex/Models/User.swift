@@ -16,9 +16,7 @@ struct User: Identifiable, Codable, Equatable {
     let createdAt: Date
     var connection: Connection?
     
-    var age: Int {
-        Calendar.current.dateComponents([.year], from: dateOfBirth, to: Date()).year ?? 0
-    }
+    var isProfileVisible: Bool = true
     
     struct Location: Codable, Equatable {
         let latitude: Double
@@ -30,37 +28,5 @@ struct User: Identifiable, Codable, Equatable {
     struct ProfilePrompt: Codable, Equatable {
         let question: String
         var answer: String
-    }
-}
-
-extension User {
-    static var mock: User {
-        User(
-            id: UUID().uuidString,
-            firstName: "John",
-            lastName: "Doe",
-            email: "john@example.com",
-            dateOfBirth: Calendar.current.date(byAdding: .year, value: -25, to: Date())!,
-            location: Location(
-                latitude: 37.7749,
-                longitude: -122.4194,
-                city: "San Francisco",
-                country: "United States"
-            ),
-            profileImageURLs: [
-                URL(string: "https://example.com/profile1.jpg")!
-            ],
-            bio: "Software developer passionate about creating great user experiences",
-            headline: "iOS Developer @ Tech Co",
-            interests: ["Swift", "SwiftUI", "iOS Development", "Hiking", "Photography"],
-            profilePrompts: [
-                ProfilePrompt(
-                    question: "What's your favorite way to spend a weekend?",
-                    answer: "Exploring new hiking trails and taking photos"
-                )
-            ],
-            lastActive: Date(),
-            createdAt: Date()
-        )
     }
 } 

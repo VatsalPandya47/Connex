@@ -16,6 +16,14 @@ struct EditProfileView: View {
                 TextField("Bio", text: $user.bio.bound)
             }
             
+            Section(header: Text("Profile Settings")) {
+                Toggle("Profile Visible", isOn: $user.isProfileVisible)
+                DatePicker("Last Seen", selection: Binding(
+                    get: { user.lastSeen ?? Date() },
+                    set: { user.lastSeen = $0 }
+                ), displayedComponents: .date)
+            }
+            
             Section {
                 Button("Save Changes") {
                     saveChanges()

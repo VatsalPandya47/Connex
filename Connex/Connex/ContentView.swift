@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Combine
 
 struct ContentView: View {
     @StateObject private var authViewModel = AuthViewModel()
@@ -14,9 +15,14 @@ struct ContentView: View {
         Group {
             if authViewModel.isAuthenticated {
                 MainTabView()
+                    .environmentObject(authViewModel)
             } else {
                 OnboardingView()
+                    .environmentObject(authViewModel)
             }
+        }
+        .onAppear {
+            authViewModel.checkAuthenticationStatus()
         }
     }
 }

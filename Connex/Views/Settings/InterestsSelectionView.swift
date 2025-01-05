@@ -5,7 +5,6 @@ struct InterestsSelectionView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var searchText = ""
     
-    // This would typically come from an API or configuration
     private let availableInterests = [
         "Technology", "Programming", "iOS Development", "SwiftUI",
         "Photography", "Travel", "Reading", "Writing",

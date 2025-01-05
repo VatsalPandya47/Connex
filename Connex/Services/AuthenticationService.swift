@@ -78,6 +78,25 @@ class AuthenticationService: ObservableObject {
             )
             .store(in: &cancellables)
     }
+    
+    func changePassword(currentPassword: String, newPassword: String, completion: @escaping (Result<Void, Error>) -> Void) {
+        // Implement the logic to change the password
+        // This would typically involve making a network request to the backend
+        // For example:
+        
+        let body = ["currentPassword": currentPassword, "newPassword": newPassword]
+        
+        NetworkService.shared.makeRequest(endpoint: .changePassword, body: body)
+            .sink(receiveCompletion: { result in
+                switch result {
+                case .failure(let error):
+                    completion(.failure(error))
+                case .finished:
+                    completion(.success(()))
+                }
+            }, receiveValue: { _ in })
+            .store(in: &cancellables)
+    }
 }
 
 // MARK: - Supporting Types
