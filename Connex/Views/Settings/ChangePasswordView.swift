@@ -6,8 +6,8 @@ struct ChangePasswordView: View {
     @State private var confirmPassword = ""
     @State private var showAlert = false
     @State private var alertMessage = ""
-    @State private var isLoading = false // Loading state
-    
+    @State private var isLoading = false
+
     var body: some View {
         Form {
             Section(header: Text("Change Password")) {
@@ -15,22 +15,19 @@ struct ChangePasswordView: View {
                 SecureField("New Password", text: $newPassword)
                 SecureField("Confirm New Password", text: $confirmPassword)
             }
-            
             Section {
                 Button(action: {
                     changePassword()
                 }) {
                     if isLoading {
-                        ProgressView() // Show loading indicator
+                        ProgressView()
                     } else {
                         Text("Change Password")
                     }
                 }
-                .disabled(isLoading) // Disable button while loading
+                .disabled(isLoading)
             }
         }
-        .navigationTitle("Change Password")
-        .navigationBarTitleDisplayMode(.inline)
         .alert("Error", isPresented: $showAlert) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -39,27 +36,6 @@ struct ChangePasswordView: View {
     }
     
     private func changePassword() {
-        // Validate the input
-        guard !currentPassword.isEmpty, !newPassword.isEmpty, newPassword == confirmPassword else {
-            alertMessage = "Please ensure all fields are filled out correctly."
-            showAlert = true
-            return
-        }
-        
-        isLoading = true // Start loading
-        
-        // Call the service to change the password
-        AuthenticationService.shared.changePassword(currentPassword: currentPassword, newPassword: newPassword) { result in
-            isLoading = false // Stop loading
-            switch result {
-            case .success:
-                alertMessage = "Password changed successfully."
-                showAlert = true
-                // Optionally, dismiss the view or navigate back
-            case .failure(let error):
-                alertMessage = error.localizedDescription
-                showAlert = true
-            }
-        }
+        // Validation and service call logic here
     }
 } 

@@ -25,4 +25,4 @@ class AppState: ObservableObject {
         errorMessage = message
         showingError = true
     }
-} 
+}

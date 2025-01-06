@@ -2,6 +2,9 @@ import SwiftUI
 
 struct DiscoverView: View {
     var body: some View {
-        Text("Discover View")
+        NavigationView {
+            Text("Discover Connections")
+                .navigationTitle("Discover")
+        }
     }
 } 

@@ -2,6 +2,9 @@ import SwiftUI
 
 struct ChatListView: View {
     var body: some View {
-        Text("Chat List View")
+        NavigationView {
+            Text("Your Chats")
+                .navigationTitle("Chats")
+        }
     }
 } 

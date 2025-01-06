@@ -9,16 +9,15 @@ import SwiftUI
 import Combine
 
 struct ContentView: View {
-    @StateObject private var authViewModel = AuthViewModel()
+    @EnvironmentObject var authViewModel: AuthViewModel
+    @EnvironmentObject var appState: AppState
     
     var body: some View {
         Group {
             if authViewModel.isAuthenticated {
                 MainTabView()
-                    .environmentObject(authViewModel)
             } else {
-                OnboardingView()
-                    .environmentObject(authViewModel)
+                AuthenticationView()
             }
         }
         .onAppear {
@@ -53,6 +52,6 @@ struct MainTabView: View {
     }
 }
 
-// Preview {
+#Preview {
     ContentView()
-// }
+}
