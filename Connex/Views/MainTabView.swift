@@ -31,4 +31,9 @@ struct MainTabView: View {
                 .tag(3)
         }
     }
+}
+
+#Preview {
+    MainTabView()
+        .environmentObject(AuthViewModel())
 } 

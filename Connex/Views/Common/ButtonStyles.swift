@@ -5,10 +5,10 @@ struct PrimaryButtonStyle: ButtonStyle {
         configuration.label
             .frame(maxWidth: .infinity)
             .padding()
-            .background(Color.accentColor)
+            .background(Color.blue)
             .foregroundColor(.white)
-            .cornerRadius(12)
-            .opacity(configuration.isPressed ? 0.8 : 1.0)
+            .cornerRadius(10)
+            .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
     }
 }
 
@@ -17,10 +17,10 @@ struct SecondaryButtonStyle: ButtonStyle {
         configuration.label
             .frame(maxWidth: .infinity)
             .padding()
-            .background(Color(.systemGray6))
+            .background(Color.gray.opacity(0.2))
             .foregroundColor(.primary)
-            .cornerRadius(12)
-            .opacity(configuration.isPressed ? 0.8 : 1.0)
+            .cornerRadius(10)
+            .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
     }
 }
 
