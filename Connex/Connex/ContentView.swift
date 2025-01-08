@@ -10,25 +10,35 @@ import Combine
 import FirebaseCore
 import FirebaseAuth
 import FirebaseFirestore
+import FirebaseFirestoreInternal
+import FirebaseAppCheck
 
-// Ensure Firebase is configured in your App or AppDelegate
-class AppDelegate: NSObject, UIApplicationDelegate {
-    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
-        FirebaseApp.configure()
-        return true
-    }
-}
-
-// If using SwiftUI App lifecycle
+// Ensure Firebase is configured
 @main
 struct ConnexApp: App {
-    // Register app delegate for Firebase setup
-    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    // Initialize Firebase
+    init() {
+        // Configure Firebase
+        FirebaseApp.configure()
+        
+        // Optional: Configure App Check if you want an extra layer of security
+        let providerFactory = AppCheckDebugProviderFactory()
+        AppCheck.setAppCheckProviderFactory(providerFactory)
+    }
     
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environmentObject(AuthViewModel())
+                .environmentObject(AppState())
         }
+    }
+}
+
+// Optional: Debug App Check Provider
+class AppCheckDebugProviderFactory: NSObject, AppCheckProviderFactory {
+    func createProvider(with app: FirebaseApp) -> AppCheckProvider? {
+        return AppCheckDebugProvider(app: app)
     }
 }
 
@@ -344,6 +354,10 @@ struct MainTabView: View {
 struct ProfileCreationWizardView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     @State private var currentStep = 0
+    @State private var firstName = ""
+    @State private var lastName = ""
+    @State private var bio = ""
+    @State private var selectedInterests: Set<String> = []
     
     var body: some View {
         NavigationView {
@@ -355,13 +369,13 @@ struct ProfileCreationWizardView: View {
                 
                 switch currentStep {
                 case 0:
-                    BasicInfoView()
+                    BasicInfoView(firstName: $firstName, lastName: $lastName)
                 case 1:
                     ProfilePhotoView()
                 case 2:
-                    InterestsView()
+                    InterestsView(selectedInterests: $selectedInterests)
                 case 3:
-                    PromptsView()
+                    PromptsView(bio: $bio)
                 default:
                     Text("Profile Complete")
                 }
@@ -370,8 +384,18 @@ struct ProfileCreationWizardView: View {
                     if currentStep < 3 {
                         currentStep += 1
                     } else {
-                        // Complete profile creation
-                        authViewModel.completeProfileCreation()
+                        // Complete profile creation with user data
+                        let user = AuthViewModel.User(
+                            id: UUID().uuidString,
+                            firstName: firstName,
+                            lastName: lastName,
+                            email: nil,
+                            profileImageURL: nil,
+                            bio: bio,
+                            interests: Array(selectedInterests),
+                            prompts: nil
+                        )
+                        authViewModel.completeProfileCreation(user: user)
                     }
                 }
             }
@@ -380,14 +404,16 @@ struct ProfileCreationWizardView: View {
     }
 }
 
-// Placeholder subviews
+// Update subviews to use bindings
 struct BasicInfoView: View {
+    @Binding var firstName: String
+    @Binding var lastName: String
+    
     var body: some View {
         VStack {
             Text("Basic Information")
-            TextField("First Name", text: .constant(""))
-            TextField("Last Name", text: .constant(""))
-            TextField("Age", text: .constant(""))
+            TextField("First Name", text: $firstName)
+            TextField("Last Name", text: $lastName)
         }
         .padding()
     }
@@ -411,15 +437,25 @@ struct ProfilePhotoView: View {
 }
 
 struct InterestsView: View {
+    @Binding var selectedInterests: Set<String>
+    let interests = ["Technology", "Business", "Arts", "Sports", "Music", "Travel", "Fitness"]
+    
     var body: some View {
         VStack {
             Text("Select Your Interests")
             List {
-                Text("Technology")
-                Text("Business")
-                Text("Arts")
-                Text("Sports")
-                // Add more interests
+                ForEach(interests, id: \.self) { interest in
+                    MultipleSelectionRow(
+                        title: interest, 
+                        isSelected: selectedInterests.contains(interest)
+                    ) {
+                        if selectedInterests.contains(interest) {
+                            selectedInterests.remove(interest)
+                        } else {
+                            selectedInterests.insert(interest)
+                        }
+                    }
+                }
             }
         }
         .padding()
@@ -427,12 +463,36 @@ struct InterestsView: View {
 }
 
 struct PromptsView: View {
+    @Binding var bio: String
+    
     var body: some View {
         VStack {
-            Text("Answer Some Prompts")
-            TextEditor(text: .constant("Tell us about yourself..."))
+            Text("Tell Us About Yourself")
+            TextEditor(text: $bio)
+                .frame(height: 200)
+                .border(Color.gray.opacity(0.2))
         }
         .padding()
+    }
+}
+
+// Utility view for multiple selection
+struct MultipleSelectionRow: View {
+    let title: String
+    let isSelected: Bool
+    let action: () -> Void
+    
+    var body: some View {
+        HStack {
+            Text(title)
+            Spacer()
+            if isSelected {
+                Image(systemName: "checkmark")
+                    .foregroundColor(.blue)
+            }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture(perform: action)
     }
 }
 
