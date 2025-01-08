@@ -5,19 +5,24 @@ struct User: Identifiable, Codable {
     var firstName: String
     var lastName: String
     var email: String
-    var bio: String?
     var profileImageURL: String?
-    var interests: [String]
-    
-    // Additional optional properties
-    var dateOfBirth: Date?
+    var bio: String?
+    var age: Int?
     var location: Location?
-    var headline: String?
+    var interests: [String]
+    var prompts: [Prompt]
     
     struct Location: Codable {
         let latitude: Double
         let longitude: Double
         let city: String
         let country: String
+    }
+    
+    struct Prompt: Codable, Identifiable {
+        let id: UUID
+        let question: String
+        let answer: String
+        let imageURL: String?
     }
 } 

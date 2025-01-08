@@ -7,14 +7,129 @@
 
 import SwiftUI
 import Combine
+import FirebaseCore
+import FirebaseAuth
+import FirebaseFirestore
+
+// Ensure Firebase is configured in your App or AppDelegate
+class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
+        FirebaseApp.configure()
+        return true
+    }
+}
+
+// If using SwiftUI App lifecycle
+@main
+struct ConnexApp: App {
+    // Register app delegate for Firebase setup
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    
+    var body: some Scene {
+        WindowGroup {
+            ContentView()
+        }
+    }
+}
 
 // Define AuthViewModel directly in the file
 class AuthViewModel: ObservableObject {
     @Published var isAuthenticated = false
+    @Published var currentUser: User?
+    @Published var authError: Error?
     
-    func checkAuthenticationStatus() {
-        // Placeholder authentication logic
-        isAuthenticated = false
+    // Define a basic User struct if not already defined
+    struct User: Identifiable {
+        let id: String
+        var firstName: String?
+        var lastName: String?
+        var email: String?
+        var profileImageURL: String?
+        var bio: String?
+        var interests: [String]?
+        var prompts: [String]?
+    }
+    
+    func signIn(email: String, password: String) {
+        Auth.auth().signIn(withEmail: email, password: password) { [weak self] (result, error) in
+            if let error = error {
+                self?.authError = error
+                self?.isAuthenticated = false
+                return
+            }
+            
+            guard let user = result?.user else {
+                self?.isAuthenticated = false
+                return
+            }
+            
+            // Fetch additional user data from Firestore
+            self?.fetchUserData(uid: user.uid)
+        }
+    }
+    
+    func signUp(email: String, password: String, firstName: String, lastName: String) {
+        Auth.auth().createUser(withEmail: email, password: password) { [weak self] (result, error) in
+            if let error = error {
+                self?.authError = error
+                return
+            }
+            
+            guard let user = result?.user else { return }
+            
+            // Save additional user info to Firestore
+            let userData: [String: Any] = [
+                "uid": user.uid,
+                "email": email,
+                "firstName": firstName,
+                "lastName": lastName
+            ]
+            
+            Firestore.firestore().collection("users").document(user.uid).setData(userData) { error in
+                if let error = error {
+                    print("Error saving user data: \(error)")
+                }
+            }
+        }
+    }
+    
+    private func fetchUserData(uid: String) {
+        Firestore.firestore().collection("users").document(uid).getDocument { [weak self] (snapshot, error) in
+            guard let data = snapshot?.data() else { return }
+            
+            self?.currentUser = User(
+                id: uid,
+                firstName: data["firstName"] as? String,
+                lastName: data["lastName"] as? String,
+                email: data["email"] as? String,
+                profileImageURL: data["profileImageURL"] as? String,
+                bio: data["bio"] as? String,
+                interests: data["interests"] as? [String],
+                prompts: data["prompts"] as? [String]
+            )
+            
+            self?.isAuthenticated = true
+        }
+    }
+    
+    func completeProfileCreation(user: User) {
+        guard let currentUser = Auth.auth().currentUser else { return }
+        
+        let userData: [String: Any] = [
+            "firstName": user.firstName ?? "",
+            "lastName": user.lastName ?? "",
+            "bio": user.bio ?? "",
+            "interests": user.interests ?? [],
+            "prompts": user.prompts ?? []
+        ]
+        
+        Firestore.firestore().collection("users").document(currentUser.uid).updateData(userData) { error in
+            if let error = error {
+                print("Error updating profile: \(error)")
+            } else {
+                self.currentUser = user
+            }
+        }
     }
 }
 
@@ -38,20 +153,14 @@ struct ContentView: View {
     var body: some View {
         Group {
             if authViewModel.isAuthenticated {
-                MainTabView()
+                if authViewModel.currentUser?.bio == nil {
+                    ProfileCreationWizardView()
+                } else {
+                    MainTabView()
+                }
             } else {
                 AuthenticationView()
             }
-        }
-        .onAppear {
-            authViewModel.checkAuthenticationStatus()
-        }
-        .alert(isPresented: $appState.showingError) {
-            Alert(
-                title: Text("Error"),
-                message: Text(appState.errorMessage),
-                dismissButton: .default(Text("OK"))
-            )
         }
         .environmentObject(authViewModel)
         .environmentObject(appState)
@@ -229,6 +338,101 @@ struct MainTabView: View {
                     Label("Profile", systemImage: "person.circle")
                 }
         }
+    }
+}
+
+struct ProfileCreationWizardView: View {
+    @EnvironmentObject var authViewModel: AuthViewModel
+    @State private var currentStep = 0
+    
+    var body: some View {
+        NavigationView {
+            VStack {
+                Text("Complete Your Profile")
+                    .font(.title)
+                
+                Stepper("Profile Creation Step: \(currentStep)", value: $currentStep, in: 0...3)
+                
+                switch currentStep {
+                case 0:
+                    BasicInfoView()
+                case 1:
+                    ProfilePhotoView()
+                case 2:
+                    InterestsView()
+                case 3:
+                    PromptsView()
+                default:
+                    Text("Profile Complete")
+                }
+                
+                Button("Next") {
+                    if currentStep < 3 {
+                        currentStep += 1
+                    } else {
+                        // Complete profile creation
+                        authViewModel.completeProfileCreation()
+                    }
+                }
+            }
+            .navigationTitle("Create Profile")
+        }
+    }
+}
+
+// Placeholder subviews
+struct BasicInfoView: View {
+    var body: some View {
+        VStack {
+            Text("Basic Information")
+            TextField("First Name", text: .constant(""))
+            TextField("Last Name", text: .constant(""))
+            TextField("Age", text: .constant(""))
+        }
+        .padding()
+    }
+}
+
+struct ProfilePhotoView: View {
+    var body: some View {
+        VStack {
+            Text("Upload Profile Photo")
+            Image(systemName: "person.crop.circle.fill")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 100, height: 100)
+            
+            Button("Select Photo") {
+                // Photo selection logic
+            }
+        }
+        .padding()
+    }
+}
+
+struct InterestsView: View {
+    var body: some View {
+        VStack {
+            Text("Select Your Interests")
+            List {
+                Text("Technology")
+                Text("Business")
+                Text("Arts")
+                Text("Sports")
+                // Add more interests
+            }
+        }
+        .padding()
+    }
+}
+
+struct PromptsView: View {
+    var body: some View {
+        VStack {
+            Text("Answer Some Prompts")
+            TextEditor(text: .constant("Tell us about yourself..."))
+        }
+        .padding()
     }
 }
 

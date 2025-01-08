@@ -1,28 +1,29 @@
 import SwiftUI
+import Firebase
+import FirebaseCrashlytics
 
 @main
 struct ConnexApp: App {
-    @StateObject private var authViewModel = AuthViewModel()
-    @StateObject private var appState = AppState()
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .environmentObject(authViewModel)
-                .environmentObject(appState)
-                .preferredColorScheme(appState.colorScheme)
         }
     }
 }
 
-class AppState: ObservableObject {
-    @Published var colorScheme: ColorScheme? = nil
-    @Published var isOnboarding = false
-    @Published var showingError = false
-    @Published var errorMessage = ""
-    
-    func showError(_ message: String) {
-        errorMessage = message
-        showingError = true
+class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
+        // Configure Firebase
+        FirebaseApp.configure()
+        
+        // Configure Crashlytics
+        Crashlytics.crashlytics().setCrashlyticsCollectionEnabled(true)
+        
+        // Set up analytics
+        Analytics.setAnalyticsCollectionEnabled(true)
+        
+        return true
     }
 }
